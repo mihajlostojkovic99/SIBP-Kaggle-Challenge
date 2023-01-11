@@ -169,7 +169,7 @@ if 'Tuned Linear Regression' in models.keys():
           models['Tuned Linear Regression'].best_score_, "were:",
           models['Tuned Linear Regression'].best_params_)
 
-if 'Random Forest hyperparameter tuned' in models.keys():
+if 'Hyperparameter Tuned Random Forest' in models.keys():
     print("\n\nBest Random Forest hyperparameters which achieved a score of ",
           models['Random Forest hyperparameter tuned'].best_score_, "were: ",
           models['Random Forest hyperparameter tuned'].best_params_)
