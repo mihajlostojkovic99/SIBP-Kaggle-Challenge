@@ -129,7 +129,7 @@ data_copy = data_train.copy()
 X = data_copy.drop(columns=["SalaryNormalized"], axis=1)
 y = data_copy["SalaryNormalized"]
 
-poly = PolynomialFeatures(degree=3, include_bias=False)
+poly = PolynomialFeatures(degree=2, include_bias=False)
 poly_features = poly.fit_transform(X)
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
@@ -149,12 +149,12 @@ rf_params_grid = {
 }
 
 models = {
-    'Tuned Linear Regression': GridSearchCV(LinearRegression(n_jobs=-1), lr_params_grid, n_jobs=-1),
-    # 'Random Forest': RandomForestRegressor(n_jobs=-1, verbose=1),
+    'Polynomial Regression': LinearRegression(n_jobs=-1),
+    'Random Forest': RandomForestRegressor(n_jobs=-1, verbose=1),
     # 'Random Forest (absolute error criterion)': RandomForestRegressor(n_jobs=-1, criterion="absolute_error"),  # death
-    # 'Hyperparameter Tuned Random Forest': RandomizedSearchCV(RandomForestRegressor(n_jobs=-1, warm_start=True),
-    #                                                          param_distributions=rf_params_grid, n_iter=5, verbose=5,
-    #                                                          n_jobs=-1),
+    'Hyperparameter Tuned Random Forest': RandomizedSearchCV(RandomForestRegressor(n_jobs=-1, warm_start=True),
+                                                             param_distributions=rf_params_grid, n_iter=5, verbose=5,
+                                                             n_jobs=-1),
     # Adjust n_iter for Random Forest based on how you value your time
     'XGBoost': XGBRegressor()
 }
@@ -163,8 +163,8 @@ results = pd.DataFrame(columns=['MAE', 'RMSE', 'R2-score'])
 
 for model, func in models.items():
 
-    if model == 'Tuned Linear Regression':
-        print("\nTraining a ", model, "model...")
+    if model == 'Polynomial Regression':
+        print("\nTraining a special", model, "model...")
         func.fit(X_train_poly, y_train_poly)
         pred = func.predict(X_test_poly)
         results.loc[model] = [mean_absolute_error(y_test_poly, pred),
@@ -172,7 +172,7 @@ for model, func in models.items():
                               r2_score(y_test_poly, pred)
                               ]
     else:
-        print("\nTraining a ", model, "model...")
+        print("\nTraining a", model, "model...")
         func.fit(X_train, y_train)
         pred = func.predict(X_test)
         results.loc[model] = [mean_absolute_error(y_test, pred),
@@ -180,14 +180,9 @@ for model, func in models.items():
                               r2_score(y_test, pred)
                               ]
 
-if 'Tuned Linear Regression' in models.keys():
-    print("\n\nBest Linear Regression hyperparameters which achieved a score of",
-          models['Tuned Linear Regression'].best_score_, "were:",
-          models['Tuned Linear Regression'].best_params_)
-
 if 'Hyperparameter Tuned Random Forest' in models.keys():
     print("\n\nBest Random Forest hyperparameters which achieved a score of ",
-          models['Hyperparameter Tuned Random Forest'].best_score_, "were: ",
+          models['Hyperparameter Tuned Random Forest'].best_score_, "were: \n",
           models['Hyperparameter Tuned Random Forest'].best_params_)
 
 print("\n", results)
