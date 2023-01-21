@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split, RandomizedSearchCV, GridSearchCV
 
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from xgboost import XGBRegressor
 from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
@@ -14,8 +15,9 @@ from sklearn.preprocessing import LabelEncoder
 
 print("\n------------------------------ PLOTTING AND DATA ANALYSIS ------------------------------")
 
-pd.set_option('display.max_columns', 12)
+pd.set_option('display.max_columns', 6)
 pd.set_option('display.width', None)
+pd.set_option('display.max_colwidth', 35)
 data = pd.read_csv('datasets/Train_rev1.csv')
 # data.drop("Id", axis=1, inplace=True)
 
@@ -127,7 +129,11 @@ data_copy = data_train.copy()
 X = data_copy.drop(columns=["SalaryNormalized"], axis=1)
 y = data_copy["SalaryNormalized"]
 
+poly = PolynomialFeatures(degree=3, include_bias=False)
+poly_features = poly.fit_transform(X)
+
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+X_train_poly, X_test_poly, y_train_poly, y_test_poly = train_test_split(poly_features, y, test_size=0.25, random_state=0)
 
 lr_params_grid = {
     "fit_intercept": [True, False],
@@ -138,17 +144,17 @@ rf_params_grid = {
     "n_estimators": np.arange(50, 200, 10),
     "min_samples_split": np.arange(2, 20, 2),
     "min_samples_leaf": np.arange(1, 20, 2),
-    "max_features": [0.5, 1, "sqrt", "auto"],
+    "max_features": [0.5, 1, "sqrt"],
     "max_samples": [None, 10000, 12000, 15000, 20000]
 }
 
 models = {
     'Tuned Linear Regression': GridSearchCV(LinearRegression(n_jobs=-1), lr_params_grid, n_jobs=-1),
-    'Random Forest': RandomForestRegressor(n_jobs=-1, verbose=1),
+    # 'Random Forest': RandomForestRegressor(n_jobs=-1, verbose=1),
     # 'Random Forest (absolute error criterion)': RandomForestRegressor(n_jobs=-1, criterion="absolute_error"),  # death
-    'Hyperparameter Tuned Random Forest': RandomizedSearchCV(RandomForestRegressor(n_jobs=-1, warm_start=True),
-                                                             param_distributions=rf_params_grid, n_iter=5, verbose=5,
-                                                             n_jobs=-1),
+    # 'Hyperparameter Tuned Random Forest': RandomizedSearchCV(RandomForestRegressor(n_jobs=-1, warm_start=True),
+    #                                                          param_distributions=rf_params_grid, n_iter=5, verbose=5,
+    #                                                          n_jobs=-1),
     # Adjust n_iter for Random Forest based on how you value your time
     'XGBoost': XGBRegressor()
 }
@@ -156,13 +162,23 @@ models = {
 results = pd.DataFrame(columns=['MAE', 'RMSE', 'R2-score'])
 
 for model, func in models.items():
-    print("\nTraining a ", model, "model...")
-    func.fit(X_train, y_train)
-    pred = func.predict(X_test)
-    results.loc[model] = [mean_absolute_error(y_test, pred),
-                          mean_squared_error(y_test, pred, squared=False),
-                          r2_score(y_test, pred)
-                          ]
+
+    if model == 'Tuned Linear Regression':
+        print("\nTraining a ", model, "model...")
+        func.fit(X_train_poly, y_train_poly)
+        pred = func.predict(X_test_poly)
+        results.loc[model] = [mean_absolute_error(y_test_poly, pred),
+                              mean_squared_error(y_test_poly, pred, squared=False),
+                              r2_score(y_test_poly, pred)
+                              ]
+    else:
+        print("\nTraining a ", model, "model...")
+        func.fit(X_train, y_train)
+        pred = func.predict(X_test)
+        results.loc[model] = [mean_absolute_error(y_test, pred),
+                              mean_squared_error(y_test, pred, squared=False),
+                              r2_score(y_test, pred)
+                              ]
 
 if 'Tuned Linear Regression' in models.keys():
     print("\n\nBest Linear Regression hyperparameters which achieved a score of",
@@ -171,7 +187,7 @@ if 'Tuned Linear Regression' in models.keys():
 
 if 'Hyperparameter Tuned Random Forest' in models.keys():
     print("\n\nBest Random Forest hyperparameters which achieved a score of ",
-          models['Random Forest hyperparameter tuned'].best_score_, "were: ",
-          models['Random Forest hyperparameter tuned'].best_params_)
+          models['Hyperparameter Tuned Random Forest'].best_score_, "were: ",
+          models['Hyperparameter Tuned Random Forest'].best_params_)
 
 print("\n", results)
